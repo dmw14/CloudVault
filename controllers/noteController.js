@@ -61,8 +61,10 @@ export const shareNote = async (req, res) => {
     return res.status(401).json({ message: "Not authorized" });
   }
 
-  note.isPublic = true;
+  if (!note.shareId) {
   note.shareId = uuidv4();
+}
+note.isPublic = true;
 
   await note.save();
 
