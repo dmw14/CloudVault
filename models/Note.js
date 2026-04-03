@@ -15,6 +15,12 @@ const noteSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    files: [
+      {
+        url: String,
+        public_id: String,
+      },
+    ],
     isPublic: {
       type: Boolean,
       default: false,
@@ -25,6 +31,7 @@ const noteSchema = mongoose.Schema(
     expiresAt: {
       type: Date,
     },
+    
   },
   { timestamps: true }
 );

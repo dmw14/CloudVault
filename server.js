@@ -30,3 +30,13 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+// Error Handler Middleware
+app.use((err, req, res, next) => {
+  console.error(err); // log full error in terminal
+
+  res.status(500).json({
+    message: err.message || "Server Error",
+    error: err,
+  });
+});
