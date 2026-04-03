@@ -61,15 +61,22 @@ export const shareNote = async (req, res) => {
     return res.status(401).json({ message: "Not authorized" });
   }
 
+  // ✅ Generate shareId only once
   if (!note.shareId) {
-  note.shareId = uuidv4();
-}
-note.isPublic = true;
+    note.shareId = uuidv4();
+  }
+
+  // ✅ Make note public
+  note.isPublic = true;
+
+  // ⏳ Add expiry (24 hours)
+  note.expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
   await note.save();
 
   res.json({
     shareLink: `http://localhost:5000/api/notes/share/${note.shareId}`,
+    expiresAt: note.expiresAt,
   });
 };
 
@@ -79,6 +86,11 @@ export const getSharedNote = async (req, res) => {
 
   if (!note || !note.isPublic) {
     return res.status(404).json({ message: "Note not found" });
+  }
+
+  // ⏳ Expiry check
+  if (note.expiresAt && note.expiresAt < new Date()) {
+    return res.status(410).json({ message: "Link expired" });
   }
 
   res.json(note);

@@ -22,6 +22,9 @@ const noteSchema = mongoose.Schema(
     shareId: {
       type: String,
     },
+    expiresAt: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
