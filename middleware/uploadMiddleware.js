@@ -5,7 +5,7 @@ import cloudinary from "../config/cloudinary.js";
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
-    folder: "cloud-notes",
+    folder: "cloudvault",
     allowed_formats: ["jpg", "png", "pdf"],
   },
 });

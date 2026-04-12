@@ -1,16 +1,31 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Cloud, Calendar, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
+import { Cloud, Calendar, ArrowLeft, AlertCircle, Loader2, Clock, FileText, Download } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import api from '../api/axios';
+
+// Check if a URL looks like an image
+function isImageUrl(url) {
+  return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url);
+}
+
+// Extract a display name from a Cloudinary URL
+function getFileName(url) {
+  try {
+    const parts = url.split('/');
+    return decodeURIComponent(parts[parts.length - 1]);
+  } catch {
+    return 'File';
+  }
+}
 
 export default function SharedNote() {
   const { shareId } = useParams();
   const [note, setNote] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [errorType, setErrorType] = useState(''); // 'expired' | 'notFound'
 
   useEffect(() => {
     const fetchNote = async () => {
@@ -18,7 +33,11 @@ export default function SharedNote() {
         const res = await api.get(`/notes/share/${shareId}`);
         setNote(res.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'Note not found');
+        if (err.response?.status === 410) {
+          setErrorType('expired');
+        } else {
+          setErrorType('notFound');
+        }
       } finally {
         setLoading(false);
       }
@@ -39,7 +58,45 @@ export default function SharedNote() {
     );
   }
 
-  if (error) {
+  // ── Expired Link ──
+  if (errorType === 'expired') {
+    return (
+      <div className="min-h-screen flex items-center justify-center
+        bg-surface-50 dark:bg-surface-950">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center px-6"
+        >
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-500/20
+            flex items-center justify-center mx-auto mb-4">
+            <Clock size={32} className="text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-surface-900 dark:text-surface-100 mb-2">
+            Link Expired
+          </h1>
+          <p className="text-surface-500 dark:text-surface-400 mb-6 max-w-sm">
+            This share link has expired. Share links are valid for 24 hours.
+            Ask the note owner to generate a new link.
+          </p>
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
+              text-primary-600 dark:text-primary-400
+              bg-primary-50 dark:bg-primary-500/10
+              hover:bg-primary-100 dark:hover:bg-primary-500/20
+              transition-colors duration-150"
+          >
+            <ArrowLeft size={16} />
+            Go to CloudVault
+          </Link>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // ── Not Found ──
+  if (errorType === 'notFound') {
     return (
       <div className="min-h-screen flex items-center justify-center
         bg-surface-50 dark:bg-surface-950">
@@ -67,7 +124,7 @@ export default function SharedNote() {
               transition-colors duration-150"
           >
             <ArrowLeft size={16} />
-            Go to CloudNotes
+            Go to CloudVault
           </Link>
         </motion.div>
       </div>
@@ -80,6 +137,10 @@ export default function SharedNote() {
     month: 'long',
     day: 'numeric',
   });
+
+  const files = note.files || [];
+  const imageFiles = files.filter((f) => isImageUrl(f.url));
+  const otherFiles = files.filter((f) => !isImageUrl(f.url));
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
@@ -134,6 +195,67 @@ export default function SharedNote() {
             {note.content}
           </ReactMarkdown>
         </div>
+
+        {/* ── Attached Files ── */}
+        {files.length > 0 && (
+          <div className="mt-12 pt-8 border-t border-surface-200/60 dark:border-surface-800/60">
+            <h2 className="text-sm font-semibold text-surface-500 dark:text-surface-400 uppercase tracking-wider mb-6">
+              Attachments ({files.length})
+            </h2>
+
+            {/* Image attachments */}
+            {imageFiles.length > 0 && (
+              <div className="space-y-4 mb-6">
+                {imageFiles.map((file, i) => (
+                  <a key={file.public_id || i} href={file.url} target="_blank" rel="noopener noreferrer"
+                    className="block group">
+                    <div className="rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700/50
+                      hover:border-primary-300 dark:hover:border-primary-500/30
+                      transition-colors duration-200">
+                      <img
+                        src={file.url}
+                        alt={`Attachment ${i + 1}`}
+                        className="w-full max-h-[500px] object-contain bg-surface-100 dark:bg-surface-800/40
+                          group-hover:opacity-90 transition-opacity duration-200"
+                        loading="lazy"
+                      />
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+
+            {/* Other file attachments (PDFs, etc.) */}
+            {otherFiles.length > 0 && (
+              <div className="space-y-2">
+                {otherFiles.map((file, i) => (
+                  <a key={file.public_id || i} href={file.url} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-4 rounded-xl
+                      bg-surface-50 dark:bg-surface-800/40
+                      border border-surface-200 dark:border-surface-700/50
+                      hover:border-primary-300 dark:hover:border-primary-500/30
+                      hover:bg-surface-100 dark:hover:bg-surface-800/60
+                      transition-all duration-200 group">
+                    <div className="w-10 h-10 rounded-lg bg-red-100 dark:bg-red-500/15
+                      flex items-center justify-center flex-shrink-0">
+                      <FileText size={20} className="text-red-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-surface-700 dark:text-surface-300 truncate">
+                        {getFileName(file.url)}
+                      </p>
+                      <p className="text-xs text-surface-400 dark:text-surface-500">
+                        Click to open
+                      </p>
+                    </div>
+                    <Download size={16} className="text-surface-400 group-hover:text-primary-500
+                      transition-colors duration-150 flex-shrink-0" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </motion.article>
 
       {/* Footer */}
@@ -142,7 +264,7 @@ export default function SharedNote() {
           <p className="text-xs text-surface-400 dark:text-surface-500">
             Shared via{' '}
             <Link to="/login" className="font-semibold text-primary-500 hover:text-primary-600 transition-colors">
-              CloudNotes
+              CloudVault
             </Link>
             {' '}— Your ideas, anywhere.
           </p>

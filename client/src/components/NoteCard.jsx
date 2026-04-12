@@ -1,5 +1,10 @@
 import { motion } from 'framer-motion';
-import { Edit3, Share2, Trash2, Calendar } from 'lucide-react';
+import { Edit3, Share2, Trash2, Calendar, Paperclip, FileText } from 'lucide-react';
+
+// Check if a URL looks like an image
+function isImageUrl(url) {
+  return /\.(jpg|jpeg|png|gif|webp|svg)$/i.test(url);
+}
 
 export default function NoteCard({ note, index, onEdit, onShare, onDelete }) {
   const formattedDate = new Date(note.updatedAt || note.createdAt).toLocaleDateString('en-US', {
@@ -12,6 +17,11 @@ export default function NoteCard({ note, index, onEdit, onShare, onDelete }) {
   const preview = note.content.length > 140
     ? note.content.slice(0, 140) + '…'
     : note.content;
+
+  const files = note.files || [];
+  const maxThumbs = 3;
+  const visibleFiles = files.slice(0, maxThumbs);
+  const extraCount = files.length - maxThumbs;
 
   return (
     <motion.div
@@ -53,16 +63,52 @@ export default function NoteCard({ note, index, onEdit, onShare, onDelete }) {
       </h3>
 
       {/* Content preview */}
-      <p className="text-sm text-surface-500 dark:text-surface-400 leading-relaxed mb-4 line-clamp-3">
+      <p className="text-sm text-surface-500 dark:text-surface-400 leading-relaxed mb-3 line-clamp-3">
         {preview}
       </p>
+
+      {/* File thumbnails */}
+      {files.length > 0 && (
+        <div className="mb-3 file-thumb-grid">
+          {visibleFiles.map((file, i) =>
+            isImageUrl(file.url) ? (
+              <img
+                key={file.public_id || i}
+                src={file.url}
+                alt="attachment"
+                className="file-thumb"
+              />
+            ) : (
+              <div
+                key={file.public_id || i}
+                className="file-thumb flex items-center justify-center bg-red-50 dark:bg-red-500/10"
+              >
+                <FileText size={16} className="text-red-500" />
+              </div>
+            )
+          )}
+          {extraCount > 0 && (
+            <div className="file-thumb-more">
+              +{extraCount}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-3 border-t
         border-surface-100 dark:border-surface-700/50">
-        <div className="flex items-center gap-1.5 text-xs text-surface-400 dark:text-surface-500">
-          <Calendar size={12} />
-          {formattedDate}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 text-xs text-surface-400 dark:text-surface-500">
+            <Calendar size={12} />
+            {formattedDate}
+          </div>
+          {files.length > 0 && (
+            <div className="flex items-center gap-1 text-xs text-surface-400 dark:text-surface-500">
+              <Paperclip size={11} />
+              {files.length}
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}

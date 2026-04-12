@@ -68,7 +68,7 @@ export default function Signup() {
           <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 shadow-lg shadow-primary-500/30">
             <Cloud size={30} className="text-white" />
           </div>
-          <h1 className="mb-1 text-3xl font-extrabold text-surface-900 dark:text-surface-100">CloudNotes</h1>
+          <h1 className="mb-1 text-3xl font-extrabold text-surface-900 dark:text-surface-100">CloudVault</h1>
           <p className="text-sm text-surface-600 dark:text-surface-400">Start your journey today.</p>
         </div>
 

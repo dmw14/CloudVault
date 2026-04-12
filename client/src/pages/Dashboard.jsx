@@ -27,6 +27,7 @@ export default function Dashboard() {
   // Action loading
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   // Fetch notes
   const fetchNotes = async () => {
@@ -62,19 +63,40 @@ export default function Dashboard() {
   }, [notes, searchQuery]);
 
   // Create / Edit Note
-  const handleSaveNote = async (data) => {
+  const handleSaveNote = async ({ title, content, files }) => {
     setSaving(true);
+    setUploadProgress(0);
     try {
       if (editingNote) {
-        const res = await api.put(`/notes/${editingNote._id}`, data);
+        // Update — JSON only (backend doesn't support file upload on update)
+        const res = await api.put(`/notes/${editingNote._id}`, { title, content });
         setNotes((prev) =>
           prev.map((n) => (n._id === editingNote._id ? res.data : n))
         );
         toast.success('Note updated');
       } else {
-        const res = await api.post('/notes', data);
-        setNotes((prev) => [res.data, ...prev]);
-        toast.success('Note created');
+        // Create — use FormData if files are present
+        if (files && files.length > 0) {
+          const formData = new FormData();
+          formData.append('title', title);
+          formData.append('content', content);
+          files.forEach((file) => formData.append('files', file));
+
+          const res = await api.post('/notes', formData, {
+            onUploadProgress: (progressEvent) => {
+              const percent = Math.round(
+                (progressEvent.loaded * 100) / progressEvent.total
+              );
+              setUploadProgress(percent);
+            },
+          });
+          setNotes((prev) => [res.data, ...prev]);
+          toast.success('Note created with files');
+        } else {
+          const res = await api.post('/notes', { title, content });
+          setNotes((prev) => [res.data, ...prev]);
+          toast.success('Note created');
+        }
       }
       setNoteModalOpen(false);
       setEditingNote(null);
@@ -82,6 +104,7 @@ export default function Dashboard() {
       toast.error(err.response?.data?.message || 'Failed to save note');
     } finally {
       setSaving(false);
+      setUploadProgress(0);
     }
   };
 
@@ -197,6 +220,7 @@ export default function Dashboard() {
         onSave={handleSaveNote}
         note={editingNote}
         loading={saving}
+        uploadProgress={uploadProgress}
       />
 
       <ShareModal

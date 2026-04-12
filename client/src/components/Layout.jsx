@@ -50,7 +50,7 @@ export default function Layout() {
                 <Cloud size={20} className="text-white" />
               </div>
               <span className="text-lg font-bold text-surface-900 dark:text-surface-100">
-                Cloud<span className="text-primary-500">Notes</span>
+                Cloud<span className="text-primary-500">Vault</span>
               </span>
             </button>
 

@@ -1,11 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Copy, Check, Link2, ExternalLink, Loader2 } from 'lucide-react';
+import { X, Copy, Check, Link2, ExternalLink, Loader2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api/axios';
 
+// Format remaining time as "Xh Ym"
+function formatTimeRemaining(expiresAt) {
+  const diff = new Date(expiresAt) - new Date();
+  if (diff <= 0) return 'Expired';
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 export default function ShareModal({ isOpen, onClose, note }) {
   const [shareLink, setShareLink] = useState('');
+  const [expiresAt, setExpiresAt] = useState(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -15,12 +28,12 @@ export default function ShareModal({ isOpen, onClose, note }) {
     setError('');
     try {
       const res = await api.post(`/notes/share/${note._id}`);
-      // Backend returns { shareLink: "http://localhost:5000/api/notes/share/:shareId" }
-      // Extract shareId and construct frontend URL
+      // Backend returns { shareLink: "http://localhost:5000/api/notes/share/:shareId", expiresAt }
       const backendLink = res.data.shareLink;
       const shareId = backendLink.split('/share/').pop();
       const frontendLink = `${window.location.origin}/share/${shareId}`;
       setShareLink(frontendLink);
+      setExpiresAt(res.data.expiresAt);
     } catch (err) {
       setError('Failed to generate share link');
       toast.error('Failed to generate share link');
@@ -41,31 +54,26 @@ export default function ShareModal({ isOpen, onClose, note }) {
   };
 
   // Generate link when modal opens
-  const handleOpen = () => {
-    if (isOpen && note && !shareLink && !loading) {
-      // If note already has shareId, construct the link directly
-      if (note.isPublic && note.shareId) {
+  useEffect(() => {
+    if (isOpen && note && !loading) {
+      if (note.isPublic && note.shareId && note.expiresAt && new Date(note.expiresAt) > new Date()) {
+        // Note already has an active share — use it
         setShareLink(`${window.location.origin}/share/${note.shareId}`);
+        setExpiresAt(note.expiresAt);
       } else {
         generateLink();
       }
     }
-  };
-
-  // Trigger on open
-  useState(() => {
-    handleOpen();
-  });
-
-  // Re-run when note or isOpen changes
-  if (isOpen && note && !shareLink && !loading && !error) {
-    handleOpen();
-  }
+    // Reset when modal closes
+    if (!isOpen) {
+      setShareLink('');
+      setExpiresAt(null);
+      setCopied(false);
+      setError('');
+    }
+  }, [isOpen, note?._id]);
 
   const handleClose = () => {
-    setShareLink('');
-    setCopied(false);
-    setError('');
     onClose();
   };
 
@@ -170,6 +178,18 @@ export default function ShareModal({ isOpen, onClose, note }) {
                       {copied ? 'Copied!' : 'Copy'}
                     </button>
                   </div>
+
+                  {/* Expiry info */}
+                  {expiresAt && (
+                    <div className="flex items-center gap-2 mt-3 px-3 py-2 rounded-lg
+                      bg-amber-50 dark:bg-amber-500/10
+                      border border-amber-200/60 dark:border-amber-500/20">
+                      <Clock size={14} className="text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                      <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                        Expires in {formatTimeRemaining(expiresAt)}
+                      </span>
+                    </div>
+                  )}
 
                   {/* Open in new tab */}
                   <a
